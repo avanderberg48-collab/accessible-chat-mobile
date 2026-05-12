@@ -33,16 +33,14 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Prebuild
-        run: |
-          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-          npx expo prebuild --platform android --clean
+        run: npx expo prebuild --platform android --clean
         env:
           ANDROID_HOME: /opt/android-sdk
 
       - name: Build APK
         run: |
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-          cd android && ./gradlew assembleDebug --no-daemon 2>&1 | tail -5
+          cd android && ./gradlew assembleDebug --no-daemon 2>&1 | tail -10
         env:
           ANDROID_HOME: /opt/android-sdk
 
