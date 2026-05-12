@@ -10,95 +10,70 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      
+          node-version: 20
+
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-      
+        run: npm ci
+
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean
-      
-      - name: Copy async-storage local maven repo
+
+      - name: Patch settings.gradle for mavenLocal
         run: |
-          LOCAL_REPO="$PWD/node_modules/@react-native-async-storage/async-storage/android/local_repo"
-          if [ -d "$LOCAL_REPO" ]; then
-            mkdir -p ~/.m2/repository
-            cp -r "$LOCAL_REPO"/. ~/.m2/repository/
-            echo "✅ Copied local_repo to ~/.m2/repository"
-            ls ~/.m2/repository/org/asyncstorage/
-          else
-            echo "⚠️  local_repo not found"
-          fi
-      
-      - name: Patch settings.gradle to add mavenLocal
-        run: |
-          SETTINGS_FILE="android/settings.gradle"
-          if [ -f "$SETTINGS_FILE" ]; then
-            # Remove the existing dependencyResolutionManagement block entirely
-            # then add mavenLocal() to pluginManagement and allprojects
-            python3 << 'PYEOF'
+          python3 << 'PYEOF'
           import re
-          
-          with open('android/settings.gradle', 'r') as f:
+
+          settings_path = "android/settings.gradle"
+          with open(settings_path, "r") as f:
             content = f.read()
-          
-          # Remove existing dependencyResolutionManagement with repos block
-          content = re.sub(r'repositoriesMode\s*=\s*["\']PREFER_SETTINGS["\'].*?\{[^}]*\}', 'repositoriesMode = PREFER_SETTINGS', content, flags=re.DOTALL)
-          
-          # Check if dependencyResolutionManagement exists
-          if 'dependencyResolutionManagement' in content:
-            # Find and replace to inject mavenLocal
-            pattern = r'(pluginManagement\s*\{[^}]*repositories\s*\{[^}]*\})'
-            replacement = r'\1\n        mavenLocal()'
-            content = re.sub(pattern, replacement, content, flags=re.DOTALL)
-            
-            pattern2 = r'(dependencyResolutionManagement\s*\{[^}]*repositories\s*\{)'
-            replacement2 = r'\1\n        mavenLocal()'
-            content = re.sub(pattern2, replacement2, content, flags=re.DOTALL)
+
+          if "dependencyResolutionManagement" not in content:
+            # Find pluginManagement block
+            pm_match = re.search(r'(pluginManagement\s*\{[^}]+\})', content)
+            if pm_match:
+              insert_pos = pm_match.end()
+              drm_block = "\ndependencyResolutionManagement {\n  repositories {\n    mavenLocal()\n    google()\n    mavenCentral()\n  }\n}\n"
+              content = content[:insert_pos] + drm_block + content[insert_pos:]
+              print("✅ Added dependencyResolutionManagement block with mavenLocal")
+            else:
+              print("⚠️  pluginManagement block not found")
           else:
-            # Add pluginManagement with mavenLocal after pluginManagement {
-            content = re.sub(r'(pluginManagement\s*\{)', r'\1\n    mavenLocal()', content)
-          
-          with open('android/settings.gradle', 'w') as f:
+            # Add mavenLocal to existing dependencyResolutionManagement
+            if "mavenLocal()" not in content:
+              content = re.sub(
+                r'dependencyResolutionManagement\s*\{',
+                'dependencyResolutionManagement {\n  repositories {',
+                content
+              )
+              content = re.sub(
+                r'(repositories\s*\{(?:\s*\n\s*)?)',
+                r'\1    mavenLocal()\n',
+                content
+              )
+              print("✅ Added mavenLocal() to existing repositories")
+            else:
+              print("ℹ️  mavenLocal() already present")
+
+          with open(settings_path, "w") as f:
             f.write(content)
-          
-          print("✅ Patched settings.gradle")
-          print(content[:2000])
+          print("✅ settings.gradle patched successfully")
+          with open(settings_path, "r") as f:
+            print(f.read()[:500])
           PYEOF
-          else
-            echo "settings.gradle not found"
-          fi
-      
-      - name: Create local.properties
-        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-      
-      - name: Build APK
+
+      - name: Build debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon 2>&1 | tee /tmp/gradle_output.txt
-          tail -50 /tmp/gradle_output.txt
-      
-      - name: Check APK exists
-        run: ls -la android/app/build/outputs/apk/debug/
-      
-      - uses: actions/upload-artifact@v4
+          ./gradlew assembleDebug --no-daemon 2>&1
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: accessible-chat-apk
-          path: android/app/build/outputs/apk/debug/*.apk
-          retention-days: 1
+          name: accessible-chat-mobile.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 5
