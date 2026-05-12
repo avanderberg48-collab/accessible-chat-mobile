@@ -2,50 +2,50 @@ name: Android Build
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
+      - uses: actions/checkout@v4
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
+      
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
           distribution: 'temurin'
-
+          java-version: '17'
+      
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Prebuild
+      
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+      
+      - name: Prebuild Android
         run: npx expo prebuild --platform android --clean
-        env:
-          ANDROID_HOME: /opt/android-sdk
-
+      
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+      
       - name: Build APK
         run: |
-          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-          cd android && ./gradlew assembleDebug --no-daemon 2>&1 | tail -10
-        env:
-          ANDROID_HOME: /opt/android-sdk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle_output.txt
+          tail -100 /tmp/gradle_output.txt
+      
+      - name: Check APK exists
+        run: ls -la android/app/build/outputs/apk/debug/
+      
+      - uses: actions/upload-artifact@v4
         if: success()
         with:
           name: accessible-chat-apk
