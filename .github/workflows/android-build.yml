@@ -24,7 +24,7 @@ jobs:
           java-version: '17'
 
       - name: Install npm dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Install Expo
         run: npm install -g expo-cli
