@@ -32,6 +32,18 @@ jobs:
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean
       
+      - name: Fix async-storage local repo
+        run: |
+          # Copy async-storage's local maven repo to ~/.m2/repository so Gradle can find it
+          LOCAL_REPO="$PWD/node_modules/@react-native-async-storage/async-storage/android/local_repo"
+          if [ -d "$LOCAL_REPO" ]; then
+            mkdir -p ~/.m2/repository
+            cp -r "$LOCAL_REPO"/. ~/.m2/repository/
+            echo "✅ Copied async-storage local_repo to ~/.m2/repository"
+          else
+            echo "⚠️  local_repo not found, skipping"
+          fi
+      
       - name: Create local.properties
         run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
       
@@ -39,8 +51,8 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle_output.txt
-          tail -100 /tmp/gradle_output.txt
+          ./gradlew assembleDebug --no-daemon 2>&1 | tee /tmp/gradle_output.txt
+          tail -50 /tmp/gradle_output.txt
       
       - name: Check APK exists
         run: ls -la android/app/build/outputs/apk/debug/
