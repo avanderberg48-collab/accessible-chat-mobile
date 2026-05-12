@@ -26,26 +26,27 @@ jobs:
       - name: Install npm dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Enable New Architecture
+        run: |
+          sed -i 's/"newArchEnabled": false/"newArchEnabled": true/' app.json
+          cat app.json | grep newArch
+
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean
-        env:
-          EXPO_NEW_ARCHITECTURE_ENABLED: '0'
 
-      - name: Patch gradle.properties for reanimated
+      - name: Add maven Local for async-storage workaround
         run: |
-          if grep -q "newArchEnabled" android/gradle.properties; then
-            sed -i 's/newArchEnabled=.*/newArchEnabled=false/' android/gradle.properties
-          else
-            echo "newArchEnabled=false" >> android/gradle.properties
+          if ! grep -q "mavenLocal()" android/settings.gradle; then
+            sed -i 's/pluginManagement {/pluginManagement {\n    repositories.mavenLocal()/' android/settings.gradle
           fi
 
       - name: Build APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon -x lint
+          ./gradlew assembleRelease --no-daemon -x lint -DnewArchEnabled=true
         env:
-          EXPO_NEW_ARCHITECTURE_ENABLED: '0'
+          EXPO_NEW_ARCHITECTURE_ENABLED: '1'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
