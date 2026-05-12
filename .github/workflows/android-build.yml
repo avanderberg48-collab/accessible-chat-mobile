@@ -29,16 +29,43 @@ jobs:
       - name: Enable New Architecture
         run: |
           sed -i 's/"newArchEnabled": false/"newArchEnabled": true/' app.json
-          cat app.json | grep newArch
 
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean
 
-      - name: Add maven Local for async-storage workaround
+      - name: Fix build.gradle - add google maven + fix kotlin version
         run: |
-          if ! grep -q "mavenLocal()" android/settings.gradle; then
-            sed -i 's/pluginManagement {/pluginManagement {\n    repositories.mavenLocal()/' android/settings.gradle
-          fi
+          cat > android/build.gradle << 'GRADLE'
+          buildscript {
+            ext {
+              kotlinVersion = '1.9.22'
+            }
+            repositories {
+              google()
+              mavenCentral()
+            }
+            dependencies {
+              classpath('com.android.tools.build:gradle')
+              classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+            }
+          }
+
+          allprojects {
+            repositories {
+              google()
+              mavenCentral()
+              mavenLocal()
+            }
+          }
+
+          android {
+            repositories {
+              google()
+              mavenCentral()
+              mavenLocal()
+            }
+          }
+          GRADLE
 
       - name: Build APK
         run: |
