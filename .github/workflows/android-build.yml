@@ -11,15 +11,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          repository: avanderberg48-collab/accessible-chat-mobile
+          fetch-depth: 1
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -27,14 +30,16 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Prebuild
         run: npx expo prebuild --platform android -y
+        env:
+          ANDROID_HOME: /opt/android-sdk
+          ANDROID_SDK_ROOT: /opt/android-sdk
 
       - name: Build APK
-        run: cd android && ./gradlew assembleRelease --no-daemon
+        run: |
+          echo "sdk.dir=/opt/android-sdk" > android/local.properties
+          cd android && ./gradlew assembleRelease --no-daemon -q
         env:
           ANDROID_HOME: /opt/android-sdk
           ANDROID_SDK_ROOT: /opt/android-sdk
@@ -44,16 +49,12 @@ jobs:
         with:
           name: apk
           path: android/app/build/outputs/apk/release/*.apk
-
-      - name: Download APK
-        uses: actions/download-artifact@v4
-        with:
-          name: apk
-          path: ./output
+          retention-days: 1
 
       - name: Upload to Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
         with:
-          files: ./output/*.apk
+          files: android/app/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
