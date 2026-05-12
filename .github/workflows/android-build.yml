@@ -23,13 +23,11 @@ jobs:
 
       - name: Patch settings.gradle for mavenLocal
         run: |
-          python3 << 'PYEOF'
+          cat > /tmp/patch_settings.py << 'SCRIPTEOF'
           import re
-
           settings_path = "android/settings.gradle"
           with open(settings_path, "r") as f:
             content = f.read()
-
           if "dependencyResolutionManagement" not in content:
             pm_match = re.search(r'(pluginManagement\s*\{[^}]+\})', content)
             if pm_match:
@@ -40,16 +38,12 @@ jobs:
               print("WARNING: pluginManagement block not found")
           else:
             if "mavenLocal()" not in content:
-              content = re.sub(
-                r'(repositories\s*\{)',
-                r'\1\n    mavenLocal()',
-                content
-              )
-
+              content = re.sub(r'(repositories\s*\{)', r'\1\n    mavenLocal()', content)
           with open(settings_path, "w") as f:
             f.write(content)
           print("settings.gradle patched successfully")
-          PYEOF
+          SCRIPTEOF
+          python3 /tmp/patch_settings.py
 
       - name: Build debug APK
         run: |
