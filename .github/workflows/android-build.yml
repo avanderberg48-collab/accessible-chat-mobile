@@ -34,6 +34,14 @@ jobs:
         env:
           ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
           ANDROID_HOME: /usr/local/lib/android/sdk
+          EXPO_NEW_ARCHITECTURE_ENABLED: '0'
+
+      - name: Patch react-native-reanimated
+        run: |
+          if [ -f android/gradle.properties ]; then
+            echo "newArchEnabled=false" >> android/gradle.properties
+            echo "hermesEnabled=true" >> android/gradle.properties
+          fi
 
       - name: Build APK
         run: cd android && ./gradlew assembleRelease
