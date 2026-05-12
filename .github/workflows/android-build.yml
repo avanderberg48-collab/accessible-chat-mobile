@@ -16,7 +16,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean
@@ -31,37 +31,24 @@ jobs:
             content = f.read()
 
           if "dependencyResolutionManagement" not in content:
-            # Find pluginManagement block
             pm_match = re.search(r'(pluginManagement\s*\{[^}]+\})', content)
             if pm_match:
               insert_pos = pm_match.end()
               drm_block = "\ndependencyResolutionManagement {\n  repositories {\n    mavenLocal()\n    google()\n    mavenCentral()\n  }\n}\n"
               content = content[:insert_pos] + drm_block + content[insert_pos:]
-              print("✅ Added dependencyResolutionManagement block with mavenLocal")
             else:
               print("⚠️  pluginManagement block not found")
           else:
-            # Add mavenLocal to existing dependencyResolutionManagement
             if "mavenLocal()" not in content:
               content = re.sub(
-                r'dependencyResolutionManagement\s*\{',
-                'dependencyResolutionManagement {\n  repositories {',
+                r'(repositories\s*\{)',
+                r'\1\n    mavenLocal()',
                 content
               )
-              content = re.sub(
-                r'(repositories\s*\{(?:\s*\n\s*)?)',
-                r'\1    mavenLocal()\n',
-                content
-              )
-              print("✅ Added mavenLocal() to existing repositories")
-            else:
-              print("ℹ️  mavenLocal() already present")
 
           with open(settings_path, "w") as f:
             f.write(content)
-          print("✅ settings.gradle patched successfully")
-          with open(settings_path, "r") as f:
-            print(f.read()[:500])
+          print("✅ settings.gradle patched")
           PYEOF
 
       - name: Build debug APK
