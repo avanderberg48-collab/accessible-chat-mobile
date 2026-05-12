@@ -23,27 +23,32 @@ jobs:
 
       - name: Patch settings.gradle for mavenLocal
         run: |
-          cat > /tmp/patch_settings.py << 'SCRIPTEOF'
-          import re
-          settings_path = "android/settings.gradle"
-          with open(settings_path, "r") as f:
-            content = f.read()
-          if "dependencyResolutionManagement" not in content:
-            pm_match = re.search(r'(pluginManagement\s*\{[^}]+\})', content)
-            if pm_match:
-              insert_pos = pm_match.end()
-              drm_block = "\ndependencyResolutionManagement {\n  repositories {\n    mavenLocal()\n    google()\n    mavenCentral()\n  }\n}\n"
-              content = content[:insert_pos] + drm_block + content[insert_pos:]
-            else:
-              print("WARNING: pluginManagement block not found")
-          else:
-            if "mavenLocal()" not in content:
-              content = re.sub(r'(repositories\s*\{)', r'\1\n    mavenLocal()', content)
-          with open(settings_path, "w") as f:
-            f.write(content)
-          print("settings.gradle patched successfully")
-          SCRIPTEOF
-          python3 /tmp/patch_settings.py
+          python3 -c "
+import re
+settings_path = 'android/settings.gradle'
+with open(settings_path, 'r') as f:
+  content = f.read()
+if 'dependencyResolutionManagement' not in content:
+  pm_match = re.search(r'(pluginManagement\s*\{[^}]+\})', content)
+  if pm_match:
+    insert_pos = pm_match.end()
+    drm_block = '''
+dependencyResolutionManagement {
+  repositories {
+    mavenLocal()
+    google()
+    mavenCentral()
+  }
+}
+'''
+    content = content[:insert_pos] + drm_block + content[insert_pos:]
+else:
+  if 'mavenLocal()' not in content:
+    content = re.sub(r'(repositories\s*\{)', r'\1\n    mavenLocal()', content)
+with open(settings_path, 'w') as f:
+  f.write(content)
+print('done')
+"
 
       - name: Build debug APK
         run: |
