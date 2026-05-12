@@ -37,7 +37,7 @@ jobs:
               drm_block = "\ndependencyResolutionManagement {\n  repositories {\n    mavenLocal()\n    google()\n    mavenCentral()\n  }\n}\n"
               content = content[:insert_pos] + drm_block + content[insert_pos:]
             else:
-              print("⚠️  pluginManagement block not found")
+              print("WARNING: pluginManagement block not found")
           else:
             if "mavenLocal()" not in content:
               content = re.sub(
@@ -48,7 +48,7 @@ jobs:
 
           with open(settings_path, "w") as f:
             f.write(content)
-          print("✅ settings.gradle patched")
+          print("settings.gradle patched successfully")
           PYEOF
 
       - name: Build debug APK
