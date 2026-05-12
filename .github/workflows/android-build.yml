@@ -34,7 +34,12 @@ jobs:
         env:
           ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
           ANDROID_HOME: /usr/local/lib/android/sdk
-          EXPO_NEW_ARCHITECTURE_ENABLED: '0'
+
+      - name: Disable new arch via gradle.properties
+        run: |
+          echo "newArchEnabled=false" >> android/gradle.properties
+          echo "hermesEnabled=true" >> android/gradle.properties
+          echo "EXPO_NEW_ARCHITECTURE_ENABLED=0" >> android/gradle.properties
 
       - name: Build APK
         run: cd android && ./gradlew assembleRelease
