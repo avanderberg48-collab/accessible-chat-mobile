@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.adriaan2.accessiblechat",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -46,6 +47,12 @@
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.READ_CONTACTS",
       "android.permission.INTERNET"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2798e684-e823-46d3-a5e1-e66b4cd930f1"
+      }
+    },
+    "owner": "adriaan2"
   }
 }
